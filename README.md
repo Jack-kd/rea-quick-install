@@ -31,7 +31,7 @@ sudo bash rea-quick-install/install-rea-ghidra.sh
 |---|---|
 | **断点续传** | 下载 Ghidra（543MB）中断后重跑脚本会从断点继续，不重新下载 |
 | **zip 缓存复用** | 已下载的 zip 缓存在 `/var/cache/rea-install/`，重装/重跑直接复用（秒过） |
-| **多源下载** | 本仓库 Release → GitHub 官方 → ghfast/ghproxy/gh-proxy 加速镜像，逐个尝试 |
+| **多源下载** | GitHub 官方 → ghfast/ghproxy/gh-proxy 加速镜像，逐个尝试 |
 | **免编译** | arm64 反编译器（decompile + sleigh）预编译包自动拉取并校验 SHA-256 |
 | **幂等** | 已装好的部分自动跳过；重跑快路径约 30 秒 |
 | **环境变量固化** | 自动给 `rea` 挂包装脚本（`GHIDRA_INSTALL_DIR`/`JAVA_HOME`），适配不加载 .bashrc 的容器 shell |
@@ -62,7 +62,6 @@ sudo bash rea-quick-install/install-rea-ghidra.sh
 
 - `install-rea-ghidra.sh` — 一键安装脚本（幂等）
 - `rea-ghidra-arm64-decompiler-12.1.4.tar.gz` — 预编译的 arm64 反编译器（SHA-256 见 checksums）
-- Release `v1.0` 附带了 Ghidra 官方发布包 `ghidra_12.1.4_PUBLIC_20260921.zip`（543MB，离线保底源）
 
 ## 构建信息（预编译包）
 
