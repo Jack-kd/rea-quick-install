@@ -42,3 +42,14 @@ sudo bash install-rea-ghidra.sh
 - 需要 Node.js 22.19+/24.11+/26+ 与 npm（脚本会检查，缺了会报错提示）
 - 脚本幂等：已装好的部分自动跳过，重跑很快
 - 若下载失败：残留文件保留在 /var/cache/rea-install/，可断点重跑
+
+## APK / Android 分析能力（装完即有）
+
+脚本会自动下载 JADX 桥接（`jadx-headless-mcp`，REA_JADX_MCP_JAR）并配置进 `rea` 包装脚本。
+装完即可对 APK 做静态逆向（不运行目标代码）：
+
+- `rea inspect-android-package <apk>` — 包信息、权限、Manifest、类/资源统计
+- `rea inspect-android-class <apk> <完整类名>` — 类的成员清单（方法/字段/内部类）
+- `rea inspect-android-method <apk> <类名> <方法名>` — 反编译单个方法为 Java 代码
+
+APK 分析入口：先 `inspect-android-package` 拿清单，再按需深入类/方法。
