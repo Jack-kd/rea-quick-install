@@ -72,3 +72,16 @@ sudo bash rea-quick-install/install-rea-ghidra.sh
 ## 更新 REA 后
 
 `npm install -g rea-agents` 会重建 `rea` 符号链接覆盖包装脚本；重跑一遍本脚本即可恢复（秒级）。
+
+## APK 分析（装完即支持）
+
+脚本会自动下载 JADX 桥接并配置好 `REA_JADX_MCP_JAR`，装完即可对 APK 做静态逆向：
+
+```bash
+rea inspect-android-package app.apk                        # 包信息/权限/Manifest
+rea inspect-android-class app.apk com.example.MainActivity # 类成员清单
+rea inspect-android-method app.apk com.example.MainActivity onCreate  # 反编译方法
+```
+
+已在 arm64 设备实测：NewPipe 0.29.1 APK → 7096 类 / 1375 资源，Manifest、类成员、
+方法反编译全部正常（不运行目标代码）。
