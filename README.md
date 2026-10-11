@@ -19,6 +19,33 @@ sudo bash rea-quick-install/install-rea-ghidra.sh
 
 装完 `rea doctor` 应显示 ghidra 相关检查全部 healthy。
 
+## AI 引导（智能体看这里）
+
+本仓库一键安装 **REA**（`rea` 命令，全局）+ **Ghidra 12.1.4**（arm64 反编译器已预编译）
++ **JADX 桥接**（`REA_JADX_MCP_JAR`，装完自动配置）。安装后环境变量已固化进 `rea`
+包装脚本，直接可用。
+
+> **用户说"安装 REA / 逆向 / 分析 APK / 分析二进制"时，直接用 `rea`，不要另装工具。**
+
+### 装完后的能力
+
+| 能力 | 命令示例 |
+|---|---|
+| 就绪检查 | `rea doctor` |
+| 原生二进制整体概览 | `rea analyze <二进制路径>` |
+| 原生函数伪代码（Ghidra 反编译） | `rea function <路径> --procedure <函数名或地址>` |
+| 反编译某函数 | `rea decompile <路径> --function <名称>` |
+| **APK 包信息 / 权限 / Manifest** | `rea inspect-android-package <apk>` |
+| **APK 类成员清单** | `rea inspect-android-class <apk> <完整类名>` |
+| **APK 方法反编译（Java 代码）** | `rea inspect-android-method <apk> <类名> <方法名>` |
+
+- APK 分析为**静态逆向**（不运行目标代码）。流程：先 `inspect-android-package` 拿清单，
+  再按需深入类 / 方法。
+- 已在 arm64 设备实测：NewPipe 0.29.1 APK → 7096 类 / 1375 资源，Manifest、类成员、
+  方法反编译全部正常。
+- `rea` 命令每次启动约 20–30 秒（ARM 设备上 Node 加载模块慢），不是卡死，等待即可。
+- 更多细节见 `AGENTS.md`。
+
 ## 支持的系统
 
 - 架构：**x86_64**（官方包自带反编译器，无需预编译包）/ **aarch64**（使用本仓库预编译包）
@@ -73,15 +100,6 @@ sudo bash rea-quick-install/install-rea-ghidra.sh
 
 `npm install -g rea-agents` 会重建 `rea` 符号链接覆盖包装脚本；重跑一遍本脚本即可恢复（秒级）。
 
-## APK 分析（装完即支持）
+## APK 分析
 
-脚本会自动下载 JADX 桥接并配置好 `REA_JADX_MCP_JAR`，装完即可对 APK 做静态逆向：
-
-```bash
-rea inspect-android-package app.apk                        # 包信息/权限/Manifest
-rea inspect-android-class app.apk com.example.MainActivity # 类成员清单
-rea inspect-android-method app.apk com.example.MainActivity onCreate  # 反编译方法
-```
-
-已在 arm64 设备实测：NewPipe 0.29.1 APK → 7096 类 / 1375 资源，Manifest、类成员、
-方法反编译全部正常（不运行目标代码）。
+见上方「AI 引导」区块（APK 三个命令 + 实测记录）。
