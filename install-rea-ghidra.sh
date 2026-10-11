@@ -23,6 +23,7 @@
 #   * 断点续传 + zip 缓存复用（网络中断不重来，重装秒过）
 #   * Ghidra 下载走 GitHub 官方源 + 加速镜像，自动逐个尝试
 #   * 预编译反编译器缺失时自动从仓库拉取
+#   * 自动下载 JADX 桥接（REA_JADX_MCP_JAR），装完即可分析 APK
 #   * 幂等：已装好的部分自动跳过
 #
 # 前置条件：Linux（x86_64 / aarch64）、root、Node.js 22.19+/24.11+/26+ 与 npm。
@@ -40,6 +41,11 @@ GHIDRA_RELEASE_TAG="Ghidra_12.1.4_build"
 GHIDRA_ZIP_NAME="ghidra_12.1.4_PUBLIC_20260921.zip"
 GHIDRA_SHA256="ddac49f903da9d5bac833e5cc79395098b9c33cfd3279be5f31bd00387d2d4db"
 TGZ_NAME="rea-ghidra-arm64-decompiler-${GHIDRA_VERSION}.tar.gz"
+JADX_VERSION="0.7.1"
+JADX_JAR_NAME="jadx-headless-mcp-${JADX_VERSION}-all.jar"
+JADX_SHA256="6e5eacf500b64292bfb73c49797c1958f6ee44646e43e868039ae7feb573ff75"
+JADX_URL="https://github.com/1013503897/jadx-headless-mcp/releases/download/v${JADX_VERSION}/${JADX_JAR_NAME}"
+JADX_INSTALL_DIR="${JADX_INSTALL_DIR:-/opt/rea-install-kit}"
 
 OFFICIAL_URL="https://github.com/NationalSecurityAgency/ghidra/releases/download/${GHIDRA_RELEASE_TAG}/${GHIDRA_ZIP_NAME}"
 REPO_RELEASE_URL="https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/${GHIDRA_ZIP_NAME}"
@@ -51,6 +57,12 @@ GHIDRA_MIRRORS=(
   "https://ghproxy.net/${OFFICIAL_URL}"                     # ghproxy 加速
   "https://gh-proxy.com/${OFFICIAL_URL}"                    # gh-proxy 加速
   "${REPO_RELEASE_URL}"                                     # 本仓库 Release（若日后上传了该包会自动命中）
+)
+JADX_MIRRORS=(
+  "${JADX_URL}"                                             # GitHub 官方源
+  "https://ghfast.top/${JADX_URL}"                          # ghfast 加速
+  "https://ghproxy.net/${JADX_URL}"                         # ghproxy 加速
+  "https://gh-proxy.com/${JADX_URL}"                        # gh-proxy 加速
 )
 if [[ -n "${GHIDRA_MIRRORS_EXTRA:-}" ]]; then
   read -r -a GHIDRA_MIRRORS_EXTRA_ARR <<< "${GHIDRA_MIRRORS_EXTRA}"
@@ -214,6 +226,31 @@ else
   fi
 fi
 
+# ---------- 4.5 JADX 桥接（REA APK 分析依赖 REA_JADX_MCP_JAR）----------
+JADX_JAR_PATH="${JADX_INSTALL_DIR}/${JADX_JAR_NAME}"
+if [[ "${SKIP_REA}" -eq 1 ]]; then
+  log "跳过 JADX（--skip-rea）"
+elif [[ -f "${JADX_JAR_PATH}" ]] && echo "${JADX_SHA256}  ${JADX_JAR_PATH}" | sha256sum -c - >/dev/null 2>&1; then
+  log "JADX 桥接已存在且校验通过: ${JADX_JAR_PATH}"
+else
+  log "下载 JADX 桥接（REA APK 分析用，40MB，断点续传）..."
+  mkdir -p "${JADX_INSTALL_DIR}"
+  ok=0
+  for url in "${JADX_MIRRORS[@]}"; do
+    log "  尝试: ${url}"
+    if download_resume "${url}" "${JADX_JAR_PATH}"; then
+      if echo "${JADX_SHA256}  ${JADX_JAR_PATH}" | sha256sum -c - >/dev/null 2>&1; then
+        ok=1; break
+      else
+        warn "JADX 下载完成但校验失败，清理后换下一个源"
+        rm -f "${JADX_JAR_PATH}"
+      fi
+    fi
+  done
+  [[ "${ok}" -eq 1 ]] || die "JADX 桥接下载失败（残留文件在 ${JADX_JAR_PATH}，可断点重跑）"
+  log "JADX 桥接就绪: ${JADX_JAR_PATH}"
+fi
+
 # ---------- 5. 反编译器（decompile + sleigh）----------
 DECOMPILER_DIR="${INSTALL_DIR}/Ghidra/Features/Decompiler/os/${GHIDRA_OSDIR}"
 
@@ -276,13 +313,14 @@ if [[ "${SKIP_REA}" -eq 0 ]]; then
       rm -f "${REA_BIN}"
       cat > "${REA_BIN}" <<WRAPPER
 #!/usr/bin/env bash
-# REA wrapper: guarantees GHIDRA_INSTALL_DIR for native analysis.
+# REA wrapper: guarantees Ghidra + JADX env for analysis in DSH shells.
 export GHIDRA_INSTALL_DIR="\${GHIDRA_INSTALL_DIR:-${INSTALL_DIR}}"
 export JAVA_HOME="\${JAVA_HOME:-${JAVA_HOME_DEFAULT}}"
+export REA_JADX_MCP_JAR="\${REA_JADX_MCP_JAR:-${JADX_JAR_PATH}}"
 exec /usr/bin/env node "${REA_SCRIPT}" "\$@"
 WRAPPER
       chmod +x "${REA_BIN}"
-      log "已为 rea 创建环境变量包装脚本（GHIDRA_INSTALL_DIR=${INSTALL_DIR}）"
+      log "已为 rea 创建环境变量包装脚本（GHIDRA_INSTALL_DIR=${INSTALL_DIR}，REA_JADX_MCP_JAR=${JADX_JAR_PATH}）"
     fi
   fi
 fi
@@ -295,6 +333,9 @@ log "===================================================="
 log " 安装完成！"
 log "   Ghidra:     ${INSTALL_DIR}"
 log "   反编译器:  ${DECOMPILER_DIR}/decompile"
+log "   JADX 桥接:  ${JADX_JAR_PATH}"
 log "   rea:       $(rea_version || echo '(未安装 rea)')"
-log " 快速上手: rea analyze <二进制路径>; rea function <路径> --procedure <函数名>"
+log " 快速上手:"
+log "   原生:   rea analyze <二进制路径>; rea function <路径> --procedure <函数名>"
+log "   APK:    rea inspect-android-package <apk>; rea inspect-android-class <apk> <类名>"
 log "===================================================="
