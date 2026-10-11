@@ -21,7 +21,7 @@
 #
 # 特性：
 #   * 断点续传 + zip 缓存复用（网络中断不重来，重装秒过）
-#   * Ghidra 优先从本仓库 Release 下载，失败自动切官方源 + 加速镜像
+#   * Ghidra 下载走 GitHub 官方源 + 加速镜像，自动逐个尝试
 #   * 预编译反编译器缺失时自动从仓库拉取
 #   * 幂等：已装好的部分自动跳过
 #
@@ -46,11 +46,11 @@ REPO_RELEASE_URL="https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_
 REPO_RAW_BASE="https://raw.githubusercontent.com/${GITHUB_REPO}/${REPO_BRANCH}"
 # 下载候选（按顺序尝试；可用 GHIDRA_MIRRORS_EXTRA 环境变量在前面追加）
 GHIDRA_MIRRORS=(
-  "${REPO_RELEASE_URL}"                                     # 本仓库 Release（离线保底）
   "${OFFICIAL_URL}"                                         # GitHub 官方源
   "https://ghfast.top/${OFFICIAL_URL}"                      # ghfast 加速
   "https://ghproxy.net/${OFFICIAL_URL}"                     # ghproxy 加速
   "https://gh-proxy.com/${OFFICIAL_URL}"                    # gh-proxy 加速
+  "${REPO_RELEASE_URL}"                                     # 本仓库 Release（若日后上传了该包会自动命中）
 )
 if [[ -n "${GHIDRA_MIRRORS_EXTRA:-}" ]]; then
   read -r -a GHIDRA_MIRRORS_EXTRA_ARR <<< "${GHIDRA_MIRRORS_EXTRA}"
